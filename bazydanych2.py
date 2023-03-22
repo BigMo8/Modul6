@@ -1,22 +1,35 @@
-# bazydanych_cwiczenie_01.py
+# `ex_01_conection_to_db.py`
 
 import sqlite3
 from sqlite3 import Error
 
 def create_connection(db_file):
-   """ create a database connection to the SQLite database
-       specified by db_file
-   :param db_file: database file
-   :return: Connection object or None
-   """
+   """ create a database connection to a SQLite database """
    conn = None
    try:
        conn = sqlite3.connect(db_file)
-       return conn
+       print(f"Connected to {db_file}, sqlite version: {sqlite3.version}")
    except Error as e:
        print(e)
+   finally:
+       if conn:
+           conn.close()
 
-   return conn
+def create_connection_in_memory():
+   """ create a database connection to a SQLite database """
+   conn = None
+   try:
+       conn = sqlite3.connect(":memory:")
+       print(f"Connected, sqlite version: {sqlite3.version}")
+   except Error as e:
+       print(e)
+   finally:
+       if conn:
+           conn.close()
+
+if __name__ == '__main__':
+   create_connection(r"database.db")
+   create_connection_in_memory()
 
 def execute_sql(conn, sql):
    """ Execute sql
@@ -108,12 +121,12 @@ def add_utwory(conn, utwor):
    return cur.lastrowid
 
 if __name__ == "__main__":
-   wykon = ("Gwen Stefani", "pop")
+   wykon = ("Guano Apes", "rock")
 
    conn = create_connection("playlista.db")
    wykonawca_id = add_wykonawca(conn, wykon)
 
-   utwor = ( wykonawca_id, "Let me blow your mind", "34")
+   utwor = ( wykonawca_id, "Open your eye", "19")
 
    utwor_id = add_utwory(conn, utwor)
 
@@ -150,3 +163,109 @@ def select_wykonawca_by_gatunek(conn, gatunek):
 
    rows = cur.fetchall()
    return rows
+
+# ex_05_update.py
+
+import sqlite3
+from sqlite3 import Error
+
+def create_connection(db_file):
+   """ create a database connection to the SQLite database
+       specified by the db_file
+   :param db_file: database file
+   :return: Connection object or None
+   """
+   conn = None
+   try:
+       conn = sqlite3.connect(db_file)
+   except Error as e:
+       print(e)
+
+   return conn
+
+def update(conn, table, id, **kwargs):
+   """
+   update wykonawcy_id, nazwa, odtworzenia
+   :param conn:
+   :param table: table name
+   :param id: row id
+   :return:
+   """
+   parameters = [f"{k} = ?" for k in kwargs]
+   parameters = ", ".join(parameters)
+   values = tuple(v for v in kwargs.values())
+   values += (id, )
+
+   sql = f''' UPDATE {table}
+             SET {parameters}
+             WHERE id = ?'''
+   try:
+       cur = conn.cursor()
+       cur.execute(sql, values)
+       conn.commit()
+       print("OK")
+   except sqlite3.OperationalError as e:
+       print(e)
+
+if __name__ == "__main__":
+   conn = create_connection("playlista.db")
+   update(conn, "utwory", 1, odtworzenia=89)
+   conn.close()
+
+# ex_06_delete.py
+
+import sqlite3
+
+def create_connection(db_file):
+   """ create a database connection to the SQLite database
+       specified by db_file
+   :param db_file: database file
+   :return: Connection object or None
+   """
+   conn = None
+   try:
+       conn = sqlite3.connect(db_file)
+       return conn
+   except sqlite3.Error as e:
+       print(e)
+   return conn
+
+def delete_where(conn, table, **kwargs):
+   """
+   Delete from table where attributes from
+   :param conn:  Connection to the SQLite database
+   :param table: table name
+   :param kwargs: dict of attributes and values
+   :return:
+   """
+   qs = []
+   values = tuple()
+   for k, v in kwargs.items():
+       qs.append(f"{k}=?")
+       values += (v,)
+   q = " AND ".join(qs)
+
+   sql = f'DELETE FROM {table} WHERE {q}'
+   cur = conn.cursor()
+   cur.execute(sql, values)
+   conn.commit()
+   print("Deleted")
+
+def delete_all(conn, table):
+   """
+   Delete all rows from table
+   :param conn: Connection to the SQLite database
+   :param table: table name
+   :return:
+   """
+   sql = f'DELETE FROM {table}'
+   cur = conn.cursor()
+   cur.execute(sql)
+   conn.commit()
+   print("Deleted")
+
+if __name__ == "__main__":
+   conn = create_connection("playlista.db")
+   #delete_where(conn, "utwory", id=4)
+   #delete_all(conn, "wykonawcy")
+   #delete_all(conn, "utwory")
